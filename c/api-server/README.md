@@ -1,0 +1,78 @@
+# C HTTP API Demo
+
+A lightweight REST API built with C that demonstrates CRUD operations.
+
+## Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/items` | Get all items |
+| GET | `/api/items/:id` | Get a specific item |
+| POST | `/api/items` | Create a new item |
+| PATCH | `/api/items/:id` | Update an item |
+| DELETE | `/api/items/:id` | Delete an item |
+| GET | `/health` | Health check |
+
+## Setup & Run
+
+### Prerequisites
+- GCC compiler
+- Make (optional, but recommended)
+
+### Compile with Make
+```bash
+make
+```
+
+### Or Compile Directly
+```bash
+gcc -Wall -Wextra -o server.exe server.c
+```
+
+### Run Server
+```bash
+./server.exe
+```
+
+Or if using Make:
+```bash
+make run
+```
+
+The server will run on `http://localhost:3005`
+
+## Example Requests
+
+### GET All Items
+```bash
+curl http://localhost:3005/api/items
+```
+
+### GET Single Item
+```bash
+curl http://localhost:3005/api/items/1
+```
+
+### POST - Create Item
+```bash
+curl -X POST http://localhost:3005/api/items \
+  -H "Content-Type: application/json" \
+  -d '{"name":"New Item","description":"Test","price":50}'
+```
+
+### PATCH - Update Item
+```bash
+curl -X PATCH http://localhost:3005/api/items/1 \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Updated Item","price":75}'
+```
+
+### DELETE Item
+```bash
+curl -X DELETE http://localhost:3005/api/items/1
+```
+
+## Cleanup
+```bash
+make clean
+```

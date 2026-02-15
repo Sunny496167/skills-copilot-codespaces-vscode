@@ -1,0 +1,16 @@
+{
+  "name": "fastify-api-demo",
+  "version": "1.0.0",
+  "description": "Fastify API with CRUD operations",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": ["fastify", "api", "crud"],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "fastify": "^4.24.3"
+  }
+}
