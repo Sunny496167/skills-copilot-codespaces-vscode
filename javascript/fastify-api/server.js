@@ -1,7 +1,11 @@
 const fastify = require('fastify');
+const cluster = require('cluster');
+const os = require('os');
 
-const app = fastify({ logger: true });
 const PORT = 3002;
+
+// Get number of CPU cores
+const numCPUs = os.cpus().length;
 
 // In-memory data store
 let items = [
@@ -10,6 +14,10 @@ let items = [
 ];
 
 let nextId = 3;
+
+// Server initialization function
+async function startServer() {
+  const app = fastify({ logger: true });
 
 // GET - Retrieve all items
 app.get('/api/items', async (request, reply) => {
@@ -115,17 +123,51 @@ app.delete('/api/items/:id', async (request, reply) => {
 
 // Health check
 app.get('/health', async (request, reply) => {
-  return { status: 'OK', server: 'Fastify API' };
+  return { 
+    status: 'OK', 
+    server: 'Fastify API',
+    pid: process.pid,
+    environment: 'cluster-mode'
+  };
 });
 
-app.listen({ port: PORT, host: '0.0.0.0' }, (err, address) => {
-  if (err) throw err;
-  console.log(`Fastify API Server running on http://localhost:${PORT}`);
-  console.log('Endpoints:');
+  await app.listen({ port: PORT, host: '0.0.0.0' });
+  console.log(`Fastify API Worker ${process.pid} running on http://localhost:${PORT}`);
+}
+
+// Cluster setup
+if (cluster.isPrimary) {
+  console.log('\n╔════════════════════════════════════════════════════════╗');
+  console.log('║  Fastify API Server - CLUSTER MODE                    ║');
+  console.log(`║  Master Process ID: ${process.pid}`);
+  console.log(`║  CPU Cores Available: ${numCPUs}`);
+  console.log('╚════════════════════════════════════════════════════════╝\n');
+
+  console.log(`Master ${process.pid} starting worker processes...`);
+  
+  // Fork a worker for each CPU core
+  for (let i = 0; i < numCPUs; i++) {
+    cluster.fork();
+  }
+
+  // Handle worker exits
+  cluster.on('exit', (worker, code, signal) => {
+    console.log(`Worker ${worker.process.pid} exited (${signal || code}). Restarting...`);
+    cluster.fork(); // Restart worker if it crashes
+  });
+
+  console.log(`\nEndpoints:`);
   console.log('  GET    /api/items');
   console.log('  GET    /api/items/:id');
   console.log('  POST   /api/items');
   console.log('  PATCH  /api/items/:id');
   console.log('  DELETE /api/items/:id');
-  console.log('  GET    /health');
-});
+  console.log('  GET    /health\n');
+
+} else {
+  // Worker process
+  startServer().catch(err => {
+    console.error(err);
+    process.exit(1);
+  });
+}

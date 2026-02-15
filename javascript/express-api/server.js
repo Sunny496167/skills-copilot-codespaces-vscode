@@ -1,8 +1,13 @@
 const express = require('express');
 const bodyParser = require('body-parser');
+const cluster = require('cluster');
+const os = require('os');
 
 const app = express();
 const PORT = 3001;
+
+// Get number of CPU cores
+const numCPUs = os.cpus().length;
 
 // Middleware
 app.use(bodyParser.json());
@@ -114,16 +119,51 @@ app.delete('/api/items/:id', (req, res) => {
 
 // Health check
 app.get('/health', (req, res) => {
-  res.json({ status: 'OK', server: 'Express API' });
+  res.json({ 
+    status: 'OK', 
+    server: 'Express API',
+    pid: process.pid,
+    environment: 'cluster-mode'
+  });
 });
 
-app.listen(PORT, () => {
-  console.log(`Express API Server running on http://localhost:${PORT}`);
-  console.log('Endpoints:');
+// Start server function
+function startServer() {
+  app.listen(PORT, () => {
+    console.log(`Express API Worker ${process.pid} running on http://localhost:${PORT}`);
+  });
+}
+
+// Cluster setup
+if (cluster.isPrimary) {
+  console.log('\n╔════════════════════════════════════════════════════════╗');
+  console.log('║  Express API Server - CLUSTER MODE                    ║');
+  console.log(`║  Master Process ID: ${process.pid}`);
+  console.log(`║  CPU Cores Available: ${numCPUs}`);
+  console.log('╚════════════════════════════════════════════════════════╝\n');
+
+  console.log(`Master ${process.pid} starting worker processes...`);
+  
+  // Fork a worker for each CPU core
+  for (let i = 0; i < numCPUs; i++) {
+    cluster.fork();
+  }
+
+  // Handle worker exits
+  cluster.on('exit', (worker, code, signal) => {
+    console.log(`Worker ${worker.process.pid} exited (${signal || code}). Restarting...`);
+    cluster.fork(); // Restart worker if it crashes
+  });
+
+  console.log(`\nEndpoints:`);
   console.log('  GET    /api/items');
   console.log('  GET    /api/items/:id');
   console.log('  POST   /api/items');
   console.log('  PATCH  /api/items/:id');
   console.log('  DELETE /api/items/:id');
-  console.log('  GET    /health');
-});
+  console.log('  GET    /health\n');
+
+} else {
+  // Worker process
+  startServer();
+}
