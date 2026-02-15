@@ -34,6 +34,59 @@ The server will run on `http://localhost:3003`
 
 Interactive API documentation available at `http://localhost:3003/docs`
 
+## Scaling & Performance
+
+Use these steps to run the app with multiple worker processes and benchmark throughput.
+
+### Install extras (venv active)
+```bash
+pip install -r requirements.txt
+# (optional) faster HTTP parser
+pip install httptools
+# On Linux you can also install uvloop for faster event loop
+pip install uvloop
+```
+
+### Run (development)
+- Run directly (single process):
+```bash
+python main.py
+# or
+uvicorn main:app --host 0.0.0.0 --port 3003 --reload
+```
+
+- Run with multiple worker processes (improves CPU utilization):
+```bash
+# Using venv python from project root (Windows/Git Bash safe)
+"/c/Users/SUNNY KUMAR/OneDrive/Desktop/skills-copilot-codespaces-vscode/.venv/Scripts/python.exe" -m uvicorn main:app --host 0.0.0.0 --port 3003 --workers 4 --http httptools
+```
+
+Notes:
+- On Windows `uvloop` is not supported; `httptools` speeds HTTP parsing cross-platform.
+- Worker count: try `4`, `8`, or `2 * CPU + 1` and benchmark.
+
+### Production (recommended on Linux)
+```bash
+pip install gunicorn uvicorn[standard]
+gunicorn -k uvicorn.workers.UvicornWorker -w 4 -b 0.0.0.0:3003 main:app
+```
+
+### Benchmarking
+Use `wrk` or `hey` to measure RPS against the `/health` endpoint.
+```bash
+# wrk example
+wrk -t4 -c200 -d30s http://localhost:3003/health
+
+# hey example
+hey -c 100 -q 10 -z 30s http://localhost:3003/health
+```
+
+### Tips
+- Ensure endpoints are async (`async def`) and avoid blocking CPU work on request handlers—offload heavy CPU tasks to background workers or separate services.
+- Use multiple processes (workers) to utilize all CPU cores; async helps I/O but doesn't bypass CPU limits from Python's GIL.
+- Use a reverse proxy (nginx) in front of the workers for TLS, buffering, and connection tuning.
+
+
 ## Example Requests
 
 ### GET All Items
